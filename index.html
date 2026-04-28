@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MÁQUINA DE REPETIR - MODAL SYSTEM</title>
+<title>MÁQUINA DE REPETIR</title>
 <style>
     * { box-sizing: border-box; }
     body {
@@ -33,6 +33,16 @@
         box-shadow: 0 10px 20px rgba(0,0,0,0.1);
     }
 
+    .placar {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        font-size: 13px;
+        font-weight: bold;
+    }
+    .placar-ac { color: #4caf50; }
+    .placar-er { color: #e53935; }
+
     .missao-box {
         background: #fffde7;
         padding: 10px;
@@ -49,6 +59,18 @@
         font-size: 45px;
         gap: 5px;
         flex-wrap: wrap;
+    }
+
+    /* emoji aparecendo com pop */
+    .emoji-pop {
+        display: inline-block;
+        opacity: 0;
+        transform: scale(0);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .emoji-pop.visivel {
+        opacity: 1;
+        transform: scale(1);
     }
 
     .painel-codigo {
@@ -80,8 +102,9 @@
         color: #03a9f4;
     }
 
-    .setas { display: flex; flex-direction: column; background: #03a9f4; }
-    .seta-btn { background: #03a9f4; color: white; border: none; padding: 2px 10px; cursor: pointer; }
+    .setas { display: flex; flex-direction: column; background: #03a9f4; border-radius: 0 9px 9px 0; overflow: hidden; }
+    .seta-btn { background: #03a9f4; color: white; border: none; padding: 2px 10px; cursor: pointer; font-size: 14px; }
+    .seta-btn:hover { background: #0288d1; }
 
     .btn-testar {
         background: #4caf50;
@@ -93,11 +116,22 @@
         border-radius: 50px;
         cursor: pointer;
         box-shadow: 0 5px 0 #2e7d32;
+        transition: 0.1s;
+    }
+    .btn-testar:active { transform: translateY(3px); box-shadow: none; }
+    .btn-testar:disabled { background: #aaa; box-shadow: 0 5px 0 #777; cursor: not-allowed; }
+
+    /* barra erro */
+    .barra-erro {
+        height: 6px;
+        border-radius: 4px;
+        background: #e53935;
+        width: 0%;
+        transition: width 1.5s linear;
+        margin: 0 10px;
     }
 
-    .btn-testar:active { transform: translateY(3px); box-shadow: none; }
-
-    /* --- SISTEMA DE MODAL --- */
+    /* Modal */
     .modal {
         display: none;
         position: fixed;
@@ -107,10 +141,9 @@
         background: rgba(0,0,0,0.7);
         backdrop-filter: blur(3px);
     }
-
     .modal-content {
         background: white;
-        margin: 15vh auto;
+        margin: 12vh auto;
         padding: 25px;
         border-radius: 30px;
         width: 320px;
@@ -118,10 +151,12 @@
         border: 6px solid #ffb300;
         animation: popup 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-
-    @keyframes popup { from {transform: scale(0.5); opacity: 0;} to {transform: scale(1); opacity: 1;} }
+    @keyframes popup { from {transform:scale(0.5);opacity:0} to {transform:scale(1);opacity:1} }
 
     .nota-icone { font-size: 60px; margin: 10px 0; }
+    .det-fim { display: flex; justify-content: center; gap: 20px; margin: 8px 0 12px; font-size: 14px; font-weight: bold; }
+    .det-fim .ac { color: #4caf50; }
+    .det-fim .er { color: #e53935; }
 
     .btn-modal {
         padding: 10px 25px;
@@ -131,7 +166,8 @@
         color: white;
         font-weight: bold;
         cursor: pointer;
-        margin-top: 15px;
+        margin-top: 10px;
+        font-size: 15px;
     }
 
     footer {
@@ -146,14 +182,21 @@
 <body>
 
 <div class="game-card">
-    <h1 id="titulo-fase" style="font-size: 18px; color: #f57c00;">CARREGANDO...</h1>
-    
+    <h1 id="titulo-fase" style="font-size:18px;color:#f57c00;margin:0;">CARREGANDO...</h1>
+
+    <div class="placar">
+        <span class="placar-ac">✅ Acertos: <span id="pl-ac">0</span></span>
+        <span class="placar-er">❌ Erros: <span id="pl-er">0</span></span>
+    </div>
+
     <div class="missao-box" id="missao-texto">Missão: ...</div>
 
     <div class="visualizador" id="area-visual"></div>
 
+    <div class="barra-erro" id="barra-erro"></div>
+
     <div class="painel-codigo">
-        <span style="font-weight: bold; color: #01579b;">REPETIR</span>
+        <span style="font-weight:bold;color:#01579b;">REPETIR</span>
         <div class="contador-container">
             <input type="text" id="num-repeticoes" value="1" readonly>
             <div class="setas">
@@ -161,100 +204,163 @@
                 <button class="seta-btn" onclick="mudarValor(-1)">▼</button>
             </div>
         </div>
-        <span id="emoji-comando" style="font-size: 35px;">🍎</span>
+        <span id="emoji-comando" style="font-size:35px;">🍎</span>
     </div>
 
-    <button class="btn-testar" onclick="testarCodigo()">TESTAR CÓDIGO ▶</button>
+    <button class="btn-testar" id="btn-testar" onclick="testarCodigo()">TESTAR CÓDIGO ▶</button>
 </div>
 
-<div id="modalSistema" class="modal">
+<!-- Modal fim de jogo -->
+<div id="modalFim" class="modal">
     <div class="modal-content" id="modalBorda">
-        <h2 id="modalTitulo">TÍTULO</h2>
+        <h2 id="modalTitulo" style="color:#4caf50;">TÍTULO</h2>
         <div id="modalIcone" class="nota-icone">😊</div>
-        <p id="modalMensagem">Mensagem aqui...</p>
-        <button id="modalBotao" class="btn-modal" onclick="fecharModal()">OK!</button>
+        <p id="modalMensagem" style="font-size:15px;margin:6px 0;"></p>
+        <div class="det-fim">
+            <span class="ac">✅ <span id="fim-ac">0</span> acertos</span>
+            <span class="er">❌ <span id="fim-er">0</span> erros</span>
+        </div>
+        <div style="font-size:13px;color:#777;margin-bottom:4px;">Sua nota:</div>
+        <div id="fim-nota" style="font-family:'Comic Sans MS',cursive;font-size:52px;font-weight:bold;line-height:1;"></div>
+        <button class="btn-modal" onclick="location.reload()">🔄 RECOMEÇAR</button>
     </div>
 </div>
 
 <footer>
-    <p><strong>Disciplina: Informática - São Lourenço do Oeste/SC</strong></p>
-    <p>Profª Adriana Bett Terebinto</p>
+    <p><strong>Disciplina: Informática – Profª Adriana Bett Terebinto</strong></p>
+    <p>São Lourenço do Oeste/SC</p>
 </footer>
 
 <script>
-    let fase = 0;
-    const fases = [
-        { nome: "Maçãs", emoji: "🍎", qtd: 4 },
-        { nome: "Foguetes", emoji: "🚀", qtd: 3 },
-        { nome: "Estrelas", emoji: "⭐", qtd: 5 },
-        { nome: "Gatinhos", emoji: "🐱", qtd: 2 },
-        { nome: "Pizzas", emoji: "🍕", qtd: 6 },
-        { nome: "Sorvetes", emoji: "🍦", qtd: 4 },
-        { nome: "Bolas", emoji: "⚽", qtd: 7 },
-        { nome: "Abelhas", emoji: "🐝", qtd: 3 },
-        { nome: "Corações", emoji: "❤️", qtd: 5 },
+    var fase = 0;
+    var acertos = 0;
+    var erros = 0;
+    var rodando = false;
+    var TOTAL = 10;
+
+    var fases = [
+        { nome: "Maçãs",     emoji: "🍎", qtd: 4 },
+        { nome: "Foguetes",  emoji: "🚀", qtd: 3 },
+        { nome: "Estrelas",  emoji: "⭐", qtd: 5 },
+        { nome: "Gatinhos",  emoji: "🐱", qtd: 2 },
+        { nome: "Pizzas",    emoji: "🍕", qtd: 6 },
+        { nome: "Sorvetes",  emoji: "🍦", qtd: 4 },
+        { nome: "Bolas",     emoji: "⚽", qtd: 7 },
+        { nome: "Abelhas",   emoji: "🐝", qtd: 3 },
+        { nome: "Corações",  emoji: "❤️", qtd: 5 },
         { nome: "Diamantes", emoji: "💎", qtd: 8 }
     ];
 
     function carregarFase() {
-        const f = fases[fase];
-        document.getElementById('titulo-fase').innerText = `JOGO ${fase + 1}: MÁQUINA DE REPETIR`;
-        document.getElementById('missao-texto').innerText = `MISSÃO: PEGAR ${f.qtd} ${f.nome.toUpperCase()}`;
+        rodando = false;
+        var f = fases[fase];
+        document.getElementById('titulo-fase').innerText = 'JOGO ' + (fase + 1) + ': MÁQUINA DE REPETIR';
+        document.getElementById('missao-texto').innerText = 'MISSÃO: PEGAR ' + f.qtd + ' ' + f.nome.toUpperCase();
         document.getElementById('emoji-comando').innerText = f.emoji;
         document.getElementById('num-repeticoes').value = 1;
-        document.getElementById('area-visual').innerHTML = "";
+        document.getElementById('area-visual').innerHTML = '';
+        document.getElementById('btn-testar').disabled = false;
+        // limpa barra
+        var bErr = document.getElementById('barra-erro');
+        bErr.style.transition = 'none';
+        bErr.style.width = '0%';
     }
 
     function mudarValor(delta) {
-        let input = document.getElementById('num-repeticoes');
-        let atual = parseInt(input.value);
-        let novo = atual + delta;
+        if (rodando) return;
+        var input = document.getElementById('num-repeticoes');
+        var atual = parseInt(input.value);
+        var novo = atual + delta;
         if (novo >= 1 && novo <= 10) input.value = novo;
     }
 
-    function abrirModal(titulo, msg, icone, cor, textoBotao, acaoFinal) {
-        document.getElementById('modalTitulo').innerText = titulo;
-        document.getElementById('modalMensagem').innerText = msg;
-        document.getElementById('modalIcone').innerText = icone;
-        document.getElementById('modalBorda').style.borderColor = cor;
-        document.getElementById('modalBotao').innerText = textoBotao;
-        document.getElementById('modalSistema').style.display = "block";
-        
-        // Se for a última fase, o botão reinicia a página
-        if(acaoFinal === "restart") {
-            document.getElementById('modalBotao').onclick = () => location.reload();
-        } else {
-            document.getElementById('modalBotao').onclick = fecharModal;
-        }
-    }
-
-    function fecharModal() {
-        document.getElementById('modalSistema').style.display = "none";
+    function delay(ms) {
+        return new Promise(function(r){ setTimeout(r, ms); });
     }
 
     async function testarCodigo() {
-        const f = fases[fase];
-        const repeticoes = parseInt(document.getElementById('num-repeticoes').value);
-        const area = document.getElementById('area-visual');
-        area.innerHTML = "";
+        if (rodando) return;
+        rodando = true;
 
-        for (let i = 0; i < repeticoes; i++) {
-            area.innerHTML += f.emoji;
-            await new Promise(r => setTimeout(r, 150));
+        var f = fases[fase];
+        var repeticoes = parseInt(document.getElementById('num-repeticoes').value);
+        var area = document.getElementById('area-visual');
+        var btn = document.getElementById('btn-testar');
+
+        area.innerHTML = '';
+        btn.disabled = true;
+
+        // animação com emojis aparecendo um a um — 500ms entre cada
+        for (var i = 0; i < repeticoes; i++) {
+            var span = document.createElement('span');
+            span.className = 'emoji-pop';
+            span.textContent = f.emoji;
+            area.appendChild(span);
+            // força reflow antes da transição
+            span.getBoundingClientRect();
+            span.classList.add('visivel');
+            await delay(500);
         }
 
+        await delay(400);
+
         if (repeticoes === f.qtd) {
-            if (fase < 9) {
-                abrirModal("CORRETO!", "Muito bem! A máquina funcionou direitinho.", "🌟", "#4caf50", "PRÓXIMA FASE");
+            // ACERTOU
+            acertos++;
+            document.getElementById('pl-ac').textContent = acertos;
+            rodando = false;
+            btn.disabled = false;
+
+            if (fase < TOTAL - 1) {
+                fase++;
+                // pequena pausa antes de avançar
+                await delay(700);
+                carregarFase();
+            } else {
+                mostrarFim();
+            }
+        } else {
+            // ERROU — sem mostrar resposta certa
+            erros++;
+            document.getElementById('pl-er').textContent = erros;
+
+            // barra vermelha antes de avançar
+            var bErr = document.getElementById('barra-erro');
+            bErr.getBoundingClientRect();
+            bErr.style.transition = 'width 1.5s linear';
+            bErr.style.width = '100%';
+
+            await delay(1600);
+
+            if (fase < TOTAL - 1) {
                 fase++;
                 carregarFase();
             } else {
-                abrirModal("NOTA 10!", "Parabéns! Você completou as 10 máquinas!", "🏆", "#4caf50", "RECOMEÇAR", "restart");
+                mostrarFim();
             }
-        } else {
-            abrirModal("OPS!", `Você programou ${repeticoes}, mas a missão pede ${f.qtd}. Ajuste o número!`, "🧐", "#ff5722", "TENTAR DE NOVO");
-            area.innerHTML = "";
         }
+    }
+
+    function mostrarFim() {
+        var nota = parseFloat((acertos / TOTAL * 10).toFixed(1));
+        var notaStr = nota.toFixed(1).replace('.', ',');
+        var cor, titulo, msg;
+
+        if (nota >= 9)      { cor = '#4caf50'; titulo = 'EXCELENTE! 🏆'; msg = 'Você é um mestre da máquina de repetir!'; }
+        else if (nota >= 7) { cor = '#ffa000'; titulo = 'MUITO BOM! 😊'; msg = 'Continue praticando, você está indo bem!'; }
+        else if (nota >= 5) { cor = '#ff7043'; titulo = 'BOM ESFORÇO! 💪'; msg = 'Tente de novo, você consegue melhorar!'; }
+        else                { cor = '#e53935'; titulo = 'NÃO DESANIME! 😄'; msg = 'Jogar de novo ajuda a aprender!'; }
+
+        document.getElementById('modalTitulo').innerText = titulo;
+        document.getElementById('modalTitulo').style.color = cor;
+        document.getElementById('modalIcone').innerText = nota >= 9 ? '🏆' : nota >= 7 ? '🌟' : nota >= 5 ? '💪' : '😄';
+        document.getElementById('modalMensagem').innerText = msg;
+        document.getElementById('fim-ac').textContent = acertos;
+        document.getElementById('fim-er').textContent = erros;
+        document.getElementById('fim-nota').textContent = notaStr;
+        document.getElementById('fim-nota').style.color = cor;
+        document.getElementById('modalBorda').style.borderColor = cor;
+        document.getElementById('modalFim').style.display = 'block';
     }
 
     carregarFase();
